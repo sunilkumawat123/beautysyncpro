@@ -1,68 +1,46 @@
-name: Build and Deploy BeautySyncPro
+name: Upload Files to MinIO S3 (BeautySyncPro)
 
 on:
   push:
     branches:
       - main
-  pull_request:
-    branches:
-      - main
 
 jobs:
-  build:
+  upload-to-s3:
     runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:5.7
-        env:
-          MYSQL_ROOT_PASSWORD: sunil@123
-          MYSQL_DATABASE: beautysyncpro
-          MYSQL_USER: root
-          MYSQL_PASSWORD: sunil@123
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping --silent"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-
     steps:
-    - name: Checkout code
+    - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
-
-    - name: Set up Docker Compose
-      run: sudo apt-get install docker-compose -y
-
-    - name: Copy .env variables
+    - name: Set up AWS CLI
       run: |
-        echo "EMAIL_ADDRESS=sunilkumawat5600@gmail.com" >> .env
-        echo "EMAIL_PASSWORD=qpom ocpr ljxx ehit" >> .env
-        echo "SECRET_KEY=a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6" >> .env
-        echo "MYSQL_HOST=localhost" >> .env
-        echo "MYSQL_USER=root" >> .env
-        echo "MYSQL_PASSWORD=sunil@123" >> .env
-        echo "MYSQL_DB=beautysyncpro" >> .env
-        echo "AWS_ACCESS_KEY_ID=fake-key" >> .env
-        echo "AWS_SECRET_ACCESS_KEY=fake-secret" >> .env
-        echo "AWS_BUCKET_NAME=fake-bucket" >> .env
+        sudo apt-get update
+        sudo apt-get install -y awscli
 
-    - name: Build and run Docker Compose
-      run: docker-compose -f docker-compose.yml up -d --build
-
-    - name: Wait for services to be ready
-      run: sleep 20
-
-    - name: Run tests
+    - name: Configure AWS CLI for MinIO
+      env:
+        AWS_ACCESS_KEY_ID: fake-key
+        AWS_SECRET_ACCESS_KEY: fake-secret
       run: |
-        docker-compose exec -T app python -m unittest discover tests || echo "Tests failed"
+        mkdir -p ~/.aws
 
-    - name: Shutdown Docker Compose
-      if: always()
-      run: docker-compose down
+        echo "[default]" > ~/.aws/credentials
+        echo "aws_access_key_id = $AWS_ACCESS_KEY_ID" >> ~/.aws/credentials
+        echo "aws_secret_access_key = $AWS_SECRET_ACCESS_KEY" >> ~/.aws/credentials
+
+        echo "[default]" > ~/.aws/config
+        echo "region = us-east-1" >> ~/.aws/config
+        echo "output = json" >> ~/.aws/config
+
+    - name: Create S3 Bucket (if not exists)
+      run: |
+        aws --endpoint-url http://localhost:9000 s3 mb s3://beautysyncpro || echo "Bucket may already exist"
+
+    - name: Upload static files to S3
+      run: |
+        aws --endpoint-url http://localhost:9000 s3 sync static/ s3://beautysyncpro/static/
+
+    - name: Upload templates to S3
+      run: |
+        aws --endpoint-url http://localhost:9000 s3 sync templates/ s3://beautysyncpro/templates/
