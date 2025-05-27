@@ -10,6 +10,7 @@ services:
       - MYSQL_HOST=localhost
       - MYSQL_USER=root
       - MYSQL_PASSWORD=sunil@123
+      
       - MYSQL_DB=beautysyncpro
       - AWS_BUCKET_NAME=${AWS_BUCKET_NAME}
       - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
