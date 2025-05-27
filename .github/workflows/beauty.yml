@@ -20,6 +20,11 @@ jobs:
         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws-region: ap-south-1
 
+    - name: Create S3 bucket if it doesn't exist
+      run: |
+        aws s3api head-bucket --bucket beautysync 2>/dev/null || \
+        aws s3api create-bucket --bucket beautysync --region ap-south-1 --create-bucket-configuration LocationConstraint=ap-south-1
+
     - name: Upload project to S3
       run: |
-        aws s3 sync . s3://beautysyncpro --exclude ".git/*" --exclude ".github/*" --exclude "venv/*"
+        aws s3 sync . s3://beautysync --exclude ".git/*" --exclude ".github/*" --exclude "venv/*"
